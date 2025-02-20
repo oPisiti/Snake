@@ -1,22 +1,60 @@
-// Global constantS
+use std::io::stdin;
+use termion::event::Key;
+use termion::input::TermRead;
+use std::{thread, time};
+
+//*** Global constants ***
+//Board
 const BOARD_HEIGHT: usize = 5;
 const BOARD_WIDTH: usize = 7;
 const BOARD_CHAR: &str = "#";
+
+// Snake
 const SNAKE_CHAR: &str = "*";
 const SNAKE_HEAD_CHAR: &str = "@";
 
+// Game
+const TICKS_PER_SEC: f32 = 1.0;
+const GAME_SLEEP: time::Duration = time::Duration::from_millis((1000.0/TICKS_PER_SEC) as u64);
+const LISTENS_PER_SEC: f32 = 1.0;
+const LISTENER_SLEEP: time::Duration = time::Duration::from_millis((1000.0/LISTENS_PER_SEC) as u64);
+
 fn main() {
+    // Create a keyboard listener
+    let listener = thread::spawn(|| {
+        loop{
+            // Detecting keydown events
+            for k in stdin().keys() {
+                match k.unwrap() {
+                    Key::Ctrl('h') => println!("Hello world!"),
+                    Key::Ctrl('q') => break,
+                    Key::Alt('t') => println!("termion is cool"),
+                    _ => (),
+                }
+            }
+
+            thread::sleep(LISTENER_SLEEP);
+        }
+    });
+
     let board = [BOARD_CHAR; BOARD_WIDTH * BOARD_HEIGHT];
     let mut snake: Vec<[usize; 2]> = vec![[3, 2], [0, 2], [0, 0]];
 
-    // Copy the board for editing
-    let mut curr_board = board;
+    loop{
 
-    // Make changes to the board
-    put_snake_to_board(&snake, &mut curr_board);
+        // Copy the board for editing
+        let mut curr_board = board;
 
-    // Final rendering
-    print_board(&curr_board);
+        // Make changes to the board
+        put_snake_to_board(&snake, &mut curr_board);
+
+        // Final rendering
+        print_board(&curr_board);
+
+        thread::sleep(GAME_SLEEP);
+    }
+
+    listener.join();
 }
 
 fn print_board(board: &[&str]) {
