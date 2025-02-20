@@ -1,7 +1,11 @@
-use std::io::stdin;
+use std::{
+    io::{stdin, stdout, Write},
+    sync::{Arc, Mutex},
+};
+use std::{thread, time};
 use termion::event::Key;
 use termion::input::TermRead;
-use std::{thread, time};
+use termion::raw::IntoRawMode;
 
 //*** Global constants ***
 //Board
@@ -15,32 +19,54 @@ const SNAKE_HEAD_CHAR: &str = "@";
 
 // Game
 const TICKS_PER_SEC: f32 = 1.0;
-const GAME_SLEEP: time::Duration = time::Duration::from_millis((1000.0/TICKS_PER_SEC) as u64);
-const LISTENS_PER_SEC: f32 = 1.0;
-const LISTENER_SLEEP: time::Duration = time::Duration::from_millis((1000.0/LISTENS_PER_SEC) as u64);
+const GAME_SLEEP: time::Duration = time::Duration::from_millis((1000.0 / TICKS_PER_SEC) as u64);
+const LISTENS_PER_SEC: f32 = 55555.0;
+const LISTENER_SLEEP: time::Duration =
+    time::Duration::from_millis((1000.0 / LISTENS_PER_SEC) as u64);
 
 fn main() {
-    // Create a keyboard listener
-    let listener = thread::spawn(|| {
-        loop{
-            // Detecting keydown events
-            for k in stdin().keys() {
-                match k.unwrap() {
-                    Key::Ctrl('h') => println!("Hello world!"),
-                    Key::Ctrl('q') => break,
-                    Key::Alt('t') => println!("termion is cool"),
-                    _ => (),
-                }
-            }
+    // Movement
+    let mut direction = Arc::new(Mutex::new([1, 0]));
 
-            thread::sleep(LISTENER_SLEEP);
+    // Create a keyboard listener
+    let mut listener_mutex = Arc::clone(&direction);
+    let listener = thread::spawn(move || {
+        let stdin = stdin();
+
+        // Detecting keydown events
+        for k in stdin.keys() {
+            match k.unwrap() {
+                Key::Char('s') => {
+                    *listener_mutex.lock().unwrap() = [-1, 0];
+                }
+                Key::Char('w') => {
+                    *listener_mutex.lock().unwrap() = [1, 0];
+                }
+                Key::Char('a') => {
+                    *listener_mutex.lock().unwrap() = [0, -1];
+                }
+                Key::Char('d') => {
+                    *listener_mutex.lock().unwrap() = [0, 1];
+                }
+                Key::Ctrl('c') => break,
+                Key::Alt('t') => println!("termion is cool"),
+                _ => (),
+            }
         }
+
+        thread::sleep(LISTENER_SLEEP);
     });
 
     let board = [BOARD_CHAR; BOARD_WIDTH * BOARD_HEIGHT];
     let mut snake: Vec<[usize; 2]> = vec![[3, 2], [0, 2], [0, 0]];
 
-    loop{
+    loop {
+        println!(
+            "{}Dir: {:?}{}",
+            termion::clear::All,
+            direction.lock().unwrap(),
+            termion::cursor::Goto(1, 1)
+        );
 
         // Copy the board for editing
         let mut curr_board = board;
@@ -54,10 +80,12 @@ fn main() {
         thread::sleep(GAME_SLEEP);
     }
 
-    listener.join();
+    // listener.join();
 }
 
 fn print_board(board: &[&str]) {
+    let mut stdout = stdout().into_raw_mode().unwrap();
+
     for r in 0..BOARD_HEIGHT {
         let start_index = r * BOARD_WIDTH;
         // let row = board[start_index..(start_index + BOARD_WIDTH)];
@@ -66,8 +94,9 @@ fn print_board(board: &[&str]) {
             row += col;
         }
 
-        println!("{row}");
+        println!("{row}\r");
     }
+     stdout.flush().unwrap();
 }
 
 fn put_snake_to_board(snake: &[[usize; 2]], board: &mut [&str]) {
