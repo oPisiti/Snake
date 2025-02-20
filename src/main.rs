@@ -1,7 +1,7 @@
 // Global constantS
 const BOARD_HEIGHT: usize = 5;
 const BOARD_WIDTH: usize = 7;
-const BOARD_CHAR: &str = "#";
+const BOARD_CHAR: &str = " ";
 const SNAKE_CHAR: &str = "*";
 const SNAKE_HEAD_CHAR: &str = "@";
 
@@ -20,16 +20,19 @@ fn main() {
 }
 
 fn print_board(board: &[&str]) {
+    let top_boundary = "╭".to_string() + &"─".repeat(BOARD_WIDTH) + "╮";
+    let bot_boundary = "╰".to_string() + &"─".repeat(BOARD_WIDTH) + "╯";
+
+    println!("{top_boundary}");
     for r in 0..BOARD_HEIGHT {
         let start_index = r * BOARD_WIDTH;
-        // let row = board[start_index..(start_index + BOARD_WIDTH)];
-        let mut row = String::new();
-        for col in board.iter().skip(start_index).take(BOARD_WIDTH) {
-            row += col;
-        }
+        let end_index = start_index + BOARD_WIDTH;
+        let row = board[start_index..end_index].concat();
 
-        println!("{row}");
+        println!("│{row}│");
     }
+    println!("{bot_boundary}");
+
 }
 
 fn put_snake_to_board(snake: &[[usize; 2]], board: &mut [&str]) {
