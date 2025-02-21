@@ -19,7 +19,7 @@ const SNAKE_CHAR: &str = "*";
 const SNAKE_HEAD_CHAR: &str = "@";
 
 // Game
-const TICKS_PER_SEC: f32 = 1.0;
+const TICKS_PER_SEC: f32 = 5.0;
 const GAME_SLEEP: time::Duration = time::Duration::from_millis((1000.0 / TICKS_PER_SEC) as u64);
 const LISTENS_PER_SEC: f32 = 5.0;
 const LISTENER_SLEEP: time::Duration =
@@ -33,9 +33,13 @@ enum Direction {
     LEFT,
 }
 
+enum GameError {
+    OutOfBounds,
+}
+
 fn main() {
     // Movement
-    let mut direction: Arc<Mutex<Direction>> = Arc::new(Mutex::new(Direction::UP));
+    let mut direction: Arc<Mutex<Direction>> = Arc::new(Mutex::new(Direction::DOWN));
 
     // Create a keyboard listener
     let mut listener_mutex = Arc::clone(&direction);
@@ -45,16 +49,16 @@ fn main() {
         // Detecting keydown events
         for k in stdin.keys() {
             match k.unwrap() {
-                Key::Char('s') => {
-                    *listener_mutex.lock().unwrap() = Direction::UP;
-                }
-                Key::Char('w') => {
+                Key::Char('s') | Key::Down => {
                     *listener_mutex.lock().unwrap() = Direction::DOWN;
                 }
-                Key::Char('a') => {
+                Key::Char('w') | Key::Up => {
+                    *listener_mutex.lock().unwrap() = Direction::UP;
+                }
+                Key::Char('a') | Key::Left => {
                     *listener_mutex.lock().unwrap() = Direction::LEFT;
                 }
-                Key::Char('d') => {
+                Key::Char('d') | Key::Right => {
                     *listener_mutex.lock().unwrap() = Direction::RIGHT;
                 }
                 Key::Ctrl('c') => break,
@@ -71,17 +75,17 @@ fn main() {
         VecDeque::from([[2, 3], [2, 2], [1, 2], [0, 2], [0, 1], [0, 0]]);
 
     loop {
-        println!(
-            "{}{}",
-            termion::clear::All,
-            termion::cursor::Goto(1, 1)
-        );
+        println!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1));
 
         // Copy the board for editing
         let mut curr_board = board;
 
         // Move the snake
-        move_snake(&mut snake, Arc::clone(&direction));
+        let attempt_move = move_snake(&mut snake, Arc::clone(&direction));
+        if attempt_move.is_err() {
+            println!("YOU LOSE hehe");
+            break;
+        }
 
         // Make changes to the board
         put_snake_to_board(&snake, &mut curr_board);
@@ -95,7 +99,10 @@ fn main() {
     // listener.join();
 }
 
-fn move_snake(snake: &mut VecDeque<[u8; 2]>, direction: Arc<Mutex<Direction>>) {
+fn move_snake(
+    snake: &mut VecDeque<[u8; 2]>,
+    direction: Arc<Mutex<Direction>>,
+) -> Result<(), GameError> {
     // Get the direction from mutex
     let dir;
     if let Ok(inner_dir_data) = direction.lock() {
@@ -104,22 +111,37 @@ fn move_snake(snake: &mut VecDeque<[u8; 2]>, direction: Arc<Mutex<Direction>>) {
         dir = Direction::DOWN;
     }
 
-    let new_pos = match dir{
-        Direction::DOWN =>{
-            [snake[0][0] - 1, snake[0][1]]
+    let [row, col] = snake[0];
+    let new_pos = match dir {
+        Direction::DOWN => {
+            if row >= BOARD_HEIGHT - 1 {
+                return Err(GameError::OutOfBounds);
+            }
+            [row + 1, col]
         }
         Direction::UP => {
-            [snake[0][0] + 1, snake[0][1]]
-        },
+            if row == 0 {
+                return Err(GameError::OutOfBounds);
+            }
+            [row - 1, col]
+        }
         Direction::RIGHT => {
-            [snake[0][0], snake[0][1] + 1]
-        },
+            if col >= BOARD_WIDTH {
+                return Err(GameError::OutOfBounds);
+            }
+            [row, col + 1]
+        }
         Direction::LEFT => {
-            [snake[0][0], snake[0][1] - 1]
+            if col == 0 {
+                return Err(GameError::OutOfBounds);
+            }
+            [row, col - 1]
         }
     };
 
     snake.push_front(new_pos);
+
+    Ok(())
 }
 
 fn print_board(board: &[&str]) {
