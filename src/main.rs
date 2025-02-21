@@ -1,7 +1,7 @@
 use std::{
     collections::VecDeque,
     io::{stdin, stdout, Write},
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex},
 };
 use std::{thread, time};
 use termion::event::Key;
@@ -27,10 +27,10 @@ const LISTENER_SLEEP: time::Duration =
 
 #[derive(Clone)]
 enum Direction {
-    UP,
-    DOWN,
-    RIGHT,
-    LEFT,
+    Up,
+    Down,
+    Right,
+    Left,
 }
 
 enum GameError {
@@ -39,10 +39,10 @@ enum GameError {
 
 fn main() {
     // Movement
-    let mut direction: Arc<Mutex<Direction>> = Arc::new(Mutex::new(Direction::DOWN));
+    let direction: Arc<Mutex<Direction>> = Arc::new(Mutex::new(Direction::Down));
 
     // Create a keyboard listener
-    let mut listener_mutex = Arc::clone(&direction);
+    let listener_mutex = Arc::clone(&direction);
     let listener = thread::spawn(move || {
         let stdin = stdin();
 
@@ -50,16 +50,16 @@ fn main() {
         for k in stdin.keys() {
             match k.unwrap() {
                 Key::Char('s') | Key::Down => {
-                    *listener_mutex.lock().unwrap() = Direction::DOWN;
+                    *listener_mutex.lock().unwrap() = Direction::Down;
                 }
                 Key::Char('w') | Key::Up => {
-                    *listener_mutex.lock().unwrap() = Direction::UP;
+                    *listener_mutex.lock().unwrap() = Direction::Up;
                 }
                 Key::Char('a') | Key::Left => {
-                    *listener_mutex.lock().unwrap() = Direction::LEFT;
+                    *listener_mutex.lock().unwrap() = Direction::Left;
                 }
                 Key::Char('d') | Key::Right => {
-                    *listener_mutex.lock().unwrap() = Direction::RIGHT;
+                    *listener_mutex.lock().unwrap() = Direction::Right;
                 }
                 Key::Ctrl('c') => break,
                 Key::Alt('t') => println!("termion is cool"),
@@ -96,7 +96,7 @@ fn main() {
         thread::sleep(GAME_SLEEP);
     }
 
-    // listener.join();
+    let _ = listener.join();
 }
 
 fn move_snake(
@@ -108,30 +108,30 @@ fn move_snake(
     if let Ok(inner_dir_data) = direction.lock() {
         dir = (*inner_dir_data).clone();
     } else {
-        dir = Direction::DOWN;
+        dir = Direction::Down;
     }
 
     let [row, col] = snake[0];
     let new_pos = match dir {
-        Direction::DOWN => {
+        Direction::Down => {
             if row >= BOARD_HEIGHT - 1 {
                 return Err(GameError::OutOfBounds);
             }
             [row + 1, col]
         }
-        Direction::UP => {
+        Direction::Up => {
             if row == 0 {
                 return Err(GameError::OutOfBounds);
             }
             [row - 1, col]
         }
-        Direction::RIGHT => {
+        Direction::Right => {
             if col >= BOARD_WIDTH {
                 return Err(GameError::OutOfBounds);
             }
             [row, col + 1]
         }
-        Direction::LEFT => {
+        Direction::Left => {
             if col == 0 {
                 return Err(GameError::OutOfBounds);
             }
