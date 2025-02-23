@@ -74,6 +74,7 @@ fn main() {
     let mut snake: VecDeque<[u8; 2]> =
         VecDeque::from([[2, 3], [2, 2], [1, 2], [0, 2], [0, 1], [0, 0]]);
 
+    // Main game loop
     loop {
         println!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1));
 
@@ -139,6 +140,8 @@ fn move_snake(
         }
     };
 
+    // Remove tail and append Head
+    snake.pop_back();
     snake.push_front(new_pos);
 
     Ok(())
