@@ -148,8 +148,6 @@ fn move_snake(
     if snake.contains(&new_pos){
         return Err(GameError::Collision);
     }
-            println!("YOU LOSE hehe");
-            println!("YOU LOSE hehe");
 
     // Remove tail and append Head
     snake.pop_back();
