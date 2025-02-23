@@ -49,16 +49,16 @@ fn main() {
         // Detecting keydown events
         for k in stdin.keys() {
             match k.unwrap() {
-                Key::Char('s') | Key::Down => {
+                Key::Char('s') | Key::Char('j') | Key::Down => {
                     *listener_mutex.lock().unwrap() = Direction::DOWN;
                 }
-                Key::Char('w') | Key::Up => {
+                Key::Char('w') | Key::Char('k') | Key::Up => {
                     *listener_mutex.lock().unwrap() = Direction::UP;
                 }
-                Key::Char('a') | Key::Left => {
+                Key::Char('a') | Key::Char('h') | Key::Left => {
                     *listener_mutex.lock().unwrap() = Direction::LEFT;
                 }
-                Key::Char('d') | Key::Right => {
+                Key::Char('d') | Key::Char('l') | Key::Right => {
                     *listener_mutex.lock().unwrap() = Direction::RIGHT;
                 }
                 Key::Ctrl('c') => break,
