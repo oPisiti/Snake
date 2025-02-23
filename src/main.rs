@@ -35,6 +35,7 @@ enum Direction {
 
 enum GameError {
     OutOfBounds,
+    Collision
 }
 
 fn main() {
@@ -49,16 +50,16 @@ fn main() {
         // Detecting keydown events
         for k in stdin.keys() {
             match k.unwrap() {
-                Key::Char('s') | Key::Down => {
+                Key::Char('s') | Key::Char('j') | Key::Down => {
                     *listener_mutex.lock().unwrap() = Direction::Down;
                 }
-                Key::Char('w') | Key::Up => {
+                Key::Char('w') | Key::Char('k') | Key::Up => {
                     *listener_mutex.lock().unwrap() = Direction::Up;
                 }
-                Key::Char('a') | Key::Left => {
+                Key::Char('a') | Key::Char('h') | Key::Left => {
                     *listener_mutex.lock().unwrap() = Direction::Left;
                 }
-                Key::Char('d') | Key::Right => {
+                Key::Char('d') | Key::Char('l') | Key::Right => {
                     *listener_mutex.lock().unwrap() = Direction::Right;
                 }
                 Key::Ctrl('c') => break,
@@ -74,6 +75,7 @@ fn main() {
     let mut snake: VecDeque<[u8; 2]> =
         VecDeque::from([[2, 3], [2, 2], [1, 2], [0, 2], [0, 1], [0, 0]]);
 
+    // Main game loop
     loop {
         println!("{}{}", termion::clear::All, termion::cursor::Goto(1, 1));
 
@@ -82,8 +84,11 @@ fn main() {
 
         // Move the snake
         let attempt_move = move_snake(&mut snake, Arc::clone(&direction));
-        if attempt_move.is_err() {
-            println!("YOU LOSE hehe");
+        if let Err(game_err) = attempt_move{
+            match game_err{
+                GameError::OutOfBounds => println!("YOU LOSE hehe"),
+                GameError::Collision => println!("You ate yourself, mate :(")
+            }
             break;
         }
 
@@ -138,6 +143,13 @@ fn move_snake(
         }
     };
 
+    // Collision with itself
+    if snake.contains(&new_pos){
+        return Err(GameError::Collision);
+    }
+
+    // Remove tail and append Head
+    snake.pop_back();
     snake.push_front(new_pos);
 
     Ok(())
