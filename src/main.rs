@@ -35,6 +35,7 @@ enum Direction {
 
 enum GameError {
     OutOfBounds,
+    Collision
 }
 
 fn main() {
@@ -83,8 +84,11 @@ fn main() {
 
         // Move the snake
         let attempt_move = move_snake(&mut snake, Arc::clone(&direction));
-        if attempt_move.is_err() {
-            println!("YOU LOSE hehe");
+        if let Err(game_err) = attempt_move{
+            match game_err{
+                GameError::OutOfBounds => println!("YOU LOSE hehe"),
+                GameError::Collision => println!("You ate yourself, mate :(")
+            }
             break;
         }
 
@@ -139,6 +143,13 @@ fn move_snake(
             [row, col - 1]
         }
     };
+
+    // Collision with itself
+    if snake.contains(&new_pos){
+        return Err(GameError::Collision);
+    }
+            println!("YOU LOSE hehe");
+            println!("YOU LOSE hehe");
 
     // Remove tail and append Head
     snake.pop_back();
