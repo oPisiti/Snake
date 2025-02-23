@@ -12,7 +12,7 @@ use termion::raw::IntoRawMode;
 //Board
 const BOARD_HEIGHT: u8 = 15;
 const BOARD_WIDTH: u8 = 15;
-const BOARD_CHAR: &str = "#";
+const BOARD_CHAR: &str = " ";
 
 // Snake
 const SNAKE_CHAR: &str = "*";
@@ -43,7 +43,7 @@ fn main() {
 
     // Create a keyboard listener
     let listener_mutex = Arc::clone(&direction);
-    let listener = thread::spawn(move || {
+    thread::spawn(move || {
         let stdin = stdin();
 
         // Detecting keydown events
@@ -96,7 +96,6 @@ fn main() {
         thread::sleep(GAME_SLEEP);
     }
 
-    let _ = listener.join();
 }
 
 fn move_snake(
