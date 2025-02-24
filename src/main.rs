@@ -119,6 +119,15 @@ fn main() {
                 break;
             }
             food_pos = placing_result.unwrap();
+            
+            // Try to create a new body instance at the rear
+            if let Some(last_element ) = snake.body.back(){
+                snake.body.push_back(*last_element);
+            }
+            else {
+                println!("Could not handle eating food :(");
+                break;
+            }
         }
 
         // Make changes to the board
