@@ -1,3 +1,14 @@
+//********************************************************************
+// Author: Lauro França (oPisiti)                                    #
+// Contact:                                                          #
+//   github: oPisiti                                                 #
+//   Email: contact@opisiti.com                                      #
+// Date: 2025                                                        #
+// Description:                                                      #
+//   A nice terminal implementation of the snake game, using termion #
+//********************************************************************
+
+
 use std::{
     collections::VecDeque, io::{stdin, stdout}, sync::{Arc, Mutex}
 };
