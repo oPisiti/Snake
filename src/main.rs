@@ -48,8 +48,8 @@ struct Snake<'a>{
 fn main() {
     // Config
     const BOARD_CONFIG: Board = Board{
-        width: 17,
-        height: 17,
+        width: 30,
+        height: 30,
         background: " "
     };
 
