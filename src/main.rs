@@ -1,8 +1,9 @@
 use std::{
-    collections::VecDeque, io::{stdin, stdout, Write}, sync::{Arc, Mutex}
+    collections::VecDeque, io::{stdin, stdout}, sync::{Arc, Mutex}
 };
 use std::{thread, time};
 use rand::{rng, Rng};
+use termion::cursor::HideCursor;
 use termion::event::Key;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
@@ -51,6 +52,16 @@ fn main() {
         height: 17,
         background: " "
     };
+
+    let stdout_result = stdout().into_raw_mode();
+    if stdout_result.is_err(){
+        println!("Unable to tap into the terminal. Aborting...");
+        return
+    }
+    let stdout = stdout_result.unwrap();
+
+    // Hide the cursor
+    let _hide_cursor = HideCursor::from(stdout);
 
     // Movement
     let direction: Arc<Mutex<Direction>> = Arc::new(Mutex::new(Direction::Down));
@@ -138,6 +149,8 @@ fn main() {
 
         thread::sleep(GAME_SLEEP);
     }
+
+    println!("{}", termion::cursor::Goto(1, 2));
 }
 
 fn set_food(snake: &Snake, board_config: &Board) -> Result<[usize; 2], GameError> {
@@ -210,7 +223,6 @@ fn move_snake(
 }
 
 fn print_board(board: &mut [&str], food_pos: &[usize; 2], board_config: &Board) {
-    let mut stdout = stdout().into_raw_mode().unwrap();
     board[food_pos[0] * board_config.width as usize + food_pos[1]] = FOOD_CHAR;
 
     let top_boundary = "╭".to_string() + &"─".repeat(board_config.width as usize) + "╮";
@@ -232,7 +244,6 @@ fn print_board(board: &mut [&str], food_pos: &[usize; 2], board_config: &Board) 
         println!("│{row}│\r");
     }
     println!("{bot_boundary}");
-    stdout.flush().unwrap();
 }
 
 fn put_snake_to_board<'a>(snake: &'a Snake, board: &mut [&'a str], board_config: &Board) {
