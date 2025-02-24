@@ -8,15 +8,6 @@ use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
 //*** Global constants ***
-//Board
-const BOARD_HEIGHT: u8 = 15;
-const BOARD_WIDTH: u8 = 15;
-const BOARD_CHAR: &str = " ";
-
-// Snake
-const SNAKE_CHAR: &str = "*";
-const SNAKE_HEAD_CHAR: &str = "@";
-
 // Game
 const TICKS_PER_SEC: f32 = 5.0;
 const GAME_SLEEP: time::Duration = time::Duration::from_millis((1000.0 / TICKS_PER_SEC) as u64);
@@ -41,7 +32,26 @@ enum GameError {
     OutOfBounds,
 }
 
+struct Board<'a>{
+    width: u8,
+    height: u8,
+    background: &'a str
+}
+
+struct Snake<'a>{
+    body_char: &'a str,
+    head_char: &'a str,
+    body: VecDeque<[usize; 2]>
+}
+
 fn main() {
+    // Config
+    const BOARD_CONFIG: Board = Board{
+        width: 17,
+        height: 17,
+        background: " "
+    };
+
     // Movement
     let direction: Arc<Mutex<Direction>> = Arc::new(Mutex::new(Direction::Down));
 
@@ -74,11 +84,14 @@ fn main() {
         thread::sleep(LISTENER_SLEEP);
     });
 
-    let board = [BOARD_CHAR; (BOARD_WIDTH * BOARD_HEIGHT) as usize];
-    let mut snake: VecDeque<[usize; 2]> =
-        VecDeque::from([[2, 3], [2, 2], [1, 2], [0, 2], [0, 1], [0, 0]]);
+    let board = [BOARD_CONFIG.background; (BOARD_CONFIG.width as usize) * (BOARD_CONFIG.height as usize)];
+    let mut snake = Snake{
+        body_char: "*",
+        head_char: "@",
+        body: VecDeque::from([[2, 3], [2, 2], [1, 2], [0, 2], [0, 1], [0, 0]]),
+    };
 
-    let mut food_pos = set_food(&snake).unwrap();
+    let mut food_pos = set_food(&snake, &BOARD_CONFIG).unwrap();
 
     // Main game loop
     loop {
@@ -88,7 +101,7 @@ fn main() {
         let mut curr_board = board;
 
         // Move the snake
-        let attempt_move = move_snake(&mut snake, Arc::clone(&direction));
+        let attempt_move = move_snake(&mut snake, Arc::clone(&direction), &BOARD_CONFIG);
         if let Err(game_err) = attempt_move {
             match game_err {
                 GameError::OutOfBounds => println!("YOU LOSE hehe"),
@@ -99,8 +112,8 @@ fn main() {
         }
 
         // Maybe eat food
-        if snake[0] == food_pos{
-            let placing_result = set_food(&snake);
+        if snake.body[0] == food_pos{
+            let placing_result = set_food(&snake, &BOARD_CONFIG);
             if placing_result.is_err(){
                 println!("Could not place new food. That's a bad programmer :(");
                 break;
@@ -109,24 +122,24 @@ fn main() {
         }
 
         // Make changes to the board
-        put_snake_to_board(&snake, &mut curr_board);
+        put_snake_to_board(&snake, &mut curr_board, &BOARD_CONFIG);
 
         // Final rendering
-        print_board(&mut curr_board, &food_pos);
+        print_board(&mut curr_board, &food_pos, &BOARD_CONFIG);
 
         thread::sleep(GAME_SLEEP);
     }
 }
 
-fn set_food(snake: &VecDeque<[usize; 2]>) -> Result<[usize; 2], GameError> {
+fn set_food(snake: &Snake, board_config: &Board) -> Result<[usize; 2], GameError> {
     let mut food_pos = [0, 0];
     let mut rng = rng();
     for _ in 0..FOOD_PLACING_MAX_TRIES{
-        food_pos[0] = rng.random_range(0..BOARD_HEIGHT) as usize; 
-        food_pos[1] = rng.random_range(0..BOARD_WIDTH) as usize; 
+        food_pos[0] = rng.random_range(0..board_config.height) as usize; 
+        food_pos[1] = rng.random_range(0..board_config.width) as usize; 
 
         // Check for collision 
-        if !snake.contains(&food_pos){
+        if !snake.body.contains(&food_pos){
             return Ok(food_pos);
         }
     }
@@ -134,11 +147,10 @@ fn set_food(snake: &VecDeque<[usize; 2]>) -> Result<[usize; 2], GameError> {
     Err(GameError::FoodPosition)
 }
 
-
-
 fn move_snake(
-    snake: &mut VecDeque<[usize; 2]>,
+    snake: &mut Snake,
     direction: Arc<Mutex<Direction>>,
+    board_config: &Board
 ) -> Result<(), GameError> {
     // Get the direction from mutex
     let dir;
@@ -148,10 +160,10 @@ fn move_snake(
         dir = Direction::Down;
     }
 
-    let [row, col] = snake[0];
+    let [row, col] = snake.body[0];
     let new_pos = match dir {
         Direction::Down => {
-            if row >= (BOARD_HEIGHT - 1).into(){
+            if row >= (board_config.height - 1).into(){
                 return Err(GameError::OutOfBounds);
             }
             [row + 1, col]
@@ -163,7 +175,7 @@ fn move_snake(
             [row - 1, col]
         }
         Direction::Right => {
-            if col >= BOARD_WIDTH.into() {
+            if col >= board_config.width.into() {
                 return Err(GameError::OutOfBounds);
             }
             [row, col + 1]
@@ -177,33 +189,33 @@ fn move_snake(
     };
 
     // Collision with itself
-    if snake.contains(&new_pos) {
+    if snake.body.contains(&new_pos) {
         return Err(GameError::Collision);
     }
 
     // Remove tail and append Head
-    snake.pop_back();
-    snake.push_front(new_pos);
+    snake.body.pop_back();
+    snake.body.push_front(new_pos);
 
     Ok(())
 }
 
-fn print_board(board: &mut [&str], food_pos: &[usize; 2]) {
+fn print_board(board: &mut [&str], food_pos: &[usize; 2], board_config: &Board) {
     let mut stdout = stdout().into_raw_mode().unwrap();
-    board[food_pos[0] * BOARD_WIDTH as usize + food_pos[1]] = FOOD_CHAR;
+    board[food_pos[0] * board_config.width as usize + food_pos[1]] = FOOD_CHAR;
 
-    let top_boundary = "╭".to_string() + &"─".repeat(BOARD_WIDTH as usize) + "╮";
-    let bot_boundary = "╰".to_string() + &"─".repeat(BOARD_WIDTH as usize) + "╯";
+    let top_boundary = "╭".to_string() + &"─".repeat(board_config.width as usize) + "╮";
+    let bot_boundary = "╰".to_string() + &"─".repeat(board_config.width as usize) + "╯";
 
     println!("{top_boundary}\r");
-    for r in 0..BOARD_HEIGHT {
-        let start_index = r * BOARD_WIDTH;
-        // let row = board[start_index..(start_index + BOARD_WIDTH)];
+    for r in 0..(board_config.height as usize) {
+        let start_index = r * (board_config.width as usize);
+
         let mut row = String::new();
         for col in board
             .iter()
-            .skip(start_index.into())
-            .take(BOARD_WIDTH.into())
+            .skip(start_index)
+            .take(board_config.width.into())
         {
             row += col;
         }
@@ -214,14 +226,14 @@ fn print_board(board: &mut [&str], food_pos: &[usize; 2]) {
     stdout.flush().unwrap();
 }
 
-fn put_snake_to_board(snake: &VecDeque<[usize; 2]>, board: &mut [&str]) {
+fn put_snake_to_board<'a>(snake: &'a Snake, board: &mut [&'a str], board_config: &Board) {
     // Body
-    for piece in snake.iter().take(snake.len()) {
-        let index = piece[0] * BOARD_WIDTH as usize + piece[1];
-        board[index] = SNAKE_CHAR;
+    for piece in snake.body.iter().take(snake.body.len()) {
+        let index = piece[0] * board_config.width as usize + piece[1];
+        board[index] = snake.body_char;
     }
 
     // Head
-    let index: usize = snake[0][0] * (BOARD_WIDTH as usize) + snake[0][1];
-    board[index] = SNAKE_HEAD_CHAR;
+    let index: usize = snake.body[0][0] * (board_config.width as usize) + snake.body[0][1];
+    board[index] = snake.head_char;
 }
